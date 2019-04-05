@@ -11,9 +11,9 @@ import sys
 #                     '"$http_user_agent" "$http_x_forwarded_for" "$http_X_REQUEST_ID" "$http_X_RB_USER" '
 #                     '$request_time';
 
-log_format = '%(filename)s[LINE:%(lineno)3d]# %(levelname)-8s %(message)s'
+log_format = '%(filename)s# %(levelname)-8s %(message)s'
 
-logging.basicConfig(format=log_format, level=logging.ERROR)
+logging.basicConfig(format=log_format, level=logging.INFO)
 
 config = {
     "REPORT_SIZE": 1000,
@@ -29,29 +29,29 @@ def parse_cli_args():
 
 
 def update_config():
+    global config
     config_path = parse_cli_args().config
     if config_path:
         if os.path.isfile(config_path):
-            config = configparser.ConfigParser()
+            cfg = configparser.ConfigParser()
             try:
-                if config.read(config_path)[0] != config_path:
+                if cfg.read(config_path)[0] != config_path:
                     logging.error('Error parsing config file')
                     sys.exit(1)
                 else:
-                    print({c: config['DEFAULT'][c] for c in config['DEFAULT']})
+                    logging.info('Read config file: ' + config_path)
+                    for c in cfg['DEFAULT']:
+                        config[c.upper()] = cfg['DEFAULT'][c]
             except configparser.Error as err:
                 logging.error('Error parsing config file')
                 logging.error(err)
                 sys.exit(1)
         else:
             logging.error('Config file not found')
-    print(config_path)
 
 
 def main():
     update_config()
-    # print(parse_cli_args())
-
 
 
 if __name__ == "__main__":
