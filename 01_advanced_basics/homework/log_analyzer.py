@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
+import re
 import sys
 
 from collections import namedtuple
@@ -18,8 +19,7 @@ config = {
     "LOG_DIR": "./log"
 }
 
-LOG_NAME_HEADER = 'nginx-access-ui.log-'
-LNHL = len(LOG_NAME_HEADER)
+LOG_RE = re.compile("^nginx-access-ui\.log-([0-9]{8})(\.gz)?$")
 
 LogFile = namedtuple('LogFile', ['path', 'name', 'date', 'ext'])
 
@@ -48,12 +48,15 @@ def cli_config_path():
 
 def get_last_log(log_dir):
     file_list = os.listdir(log_dir)
-    logs = list(filter(lambda s: s.startswith(LOG_NAME_HEADER), file_list))
+    if not file_list:
+        return None
+    logs = list(filter(lambda s: LOG_RE.match(s), file_list))
     logs.sort(reverse=True)
     if logs != []:
         log_name = logs[0]
-        log_ext = 'gz' if log_name.endswith('.gz') else ''
-        log_date = datetime.strptime(log_name[LNHL:LNHL + 8], '%Y%m%d')
+        m = LOG_RE.match(log_name)
+        log_ext = m.group(2) if m.group(2) else ''
+        log_date = datetime.strptime(m.group(1), '%Y%m%d')
         return LogFile(log_dir, log_name, log_date, log_ext)
     else:
         return None
