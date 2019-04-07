@@ -23,6 +23,8 @@ LOG_RE = re.compile("^nginx-access-ui\.log-([0-9]{8})(\.gz)?$")
 
 LogFile = namedtuple('LogFile', ['path', 'name', 'date', 'ext'])
 
+log_format = '[%(asctime)s] %(levelname).1s %(message)s'
+
 
 def update_config(config, config_path):
     if not config_path:
@@ -63,31 +65,30 @@ def get_last_log(log_dir):
 
 
 def main():
+    logging.basicConfig(format=log_format, level=logging.INFO)
+
     config_path = cli_config_path()
     if config_path:
         if not update_config(config, config_path):
-            print('Error updating config from file')
+            logging.error('Error updating config from file')
             sys.exit(1)
 
     log_dir = config.get('LOG_DIR', '')
     if not log_dir or not os.path.isdir(log_dir):
-        print("Logs directory doesn't exists")
+        logging.error("Logs directory doesn't exists")
         sys.exit(1)
 
     log_file = get_last_log(log_dir)
     if not log_file:
-        print('Log files not found in log directory')
+        logging.info('Log files not found in log directory')
+        sys.exit(0)
+
+    report_dir = config.get('REPORT_DIR', '')
+    if report_dir != '' and not os.path.isdir(report_dir):
+        logging.error("Report directory doesn't exists")
         sys.exit(1)
-
-    # report_dir = config.get('REPORT_DIR', '')
-    # if not report_dir:
-    #     pass
-    # elif not os.path.isdir(report_dir):
-    #     print("Report directory doesn't exists")
-    #     sys.exit(1)
-
-    # os.listdir()
-    # logging.basicConfig(format='', level=logging.INFO)
+    fname = None if report_dir == '' else report_dir
+    logging.basicConfig(format=log_format, level=logging.INFO, filename=fname)
 
 
 if __name__ == "__main__":
