@@ -17,14 +17,17 @@ from datetime import datetime
 config = {
     "REPORT_SIZE": 1000,
     "REPORT_DIR": "./reports",
-    "LOG_DIR": "./log"
+    "LOG_DIR": "./log",
+    "LOGGER": ""
 }
 
 LogFile = namedtuple('LogFile', ['path', 'name', 'date', 'ext'])
 
 LOG_RE = re.compile("^nginx-access-ui[.]log-([0-9]{8})([.]gz)?$")
 
-LOG_FORMAT = '[%(asctime)s] %(levelname).1s %(message)s'
+LOG_FMT = '[%(asctime)s] %(levelname).1s %(message)s'
+
+DATE_FMT = '%Y.%m.%d %H:%M:%S'
 
 REP_NAME_TMP = 'report-{:4d}.{:02d}.{:02d}.html'
 
@@ -86,7 +89,9 @@ def read_log(log_file, parse_fn=parse_line):
 
 
 def main():
-    logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
+    work_log = config.get("LOGGER", '')
+    logging.basicConfig(format=LOG_FMT, level=logging.INFO, datefmt=DATE_FMT,
+                        filename=(None if work_log == '' else work_log))
 
     config_path = cli_config_path()
     if config_path:
@@ -111,13 +116,11 @@ def main():
             logging.error("Report directory doesn't exists")
             sys.exit(1)
         ldate = log_file.date
-        report_file = REP_NAME_TMP.format(ldate.year, ldate.month, ldate.day)
-        if os.path.exists(os.path.join(report_dir, report_file)):
+        report_name = REP_NAME_TMP.format(ldate.year, ldate.month, ldate.day)
+        report_file = os.path.join(report_dir, report_name)
+        if os.path.exists(report_file):
             logging.info('Report already exists')
             sys.exit(0)
-
-    fname = None if report_dir == '' else report_dir
-    logging.basicConfig(format=LOG_FORMAT, level=logging.INFO, filename=fname)
 
 
 if __name__ == "__main__":
