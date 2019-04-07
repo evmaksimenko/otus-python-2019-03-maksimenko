@@ -112,8 +112,9 @@ def main():
             sys.exit(1)
         ldate = log_file.date
         report_file = REP_NAME_TMP.format(ldate.year, ldate.month, ldate.day)
-        print(report_file)
-        # if report_exists(report_dir)
+        if os.path.exists(os.path.join(report_dir, report_file):
+            logging.info('Report already exists')
+            sys.exit(0)
 
     fname = None if report_dir == '' else report_dir
     logging.basicConfig(format=LOG_FORMAT, level=logging.INFO, filename=fname)
