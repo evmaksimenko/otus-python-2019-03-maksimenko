@@ -20,11 +20,13 @@ config = {
     "LOG_DIR": "./log"
 }
 
-LOG_RE = re.compile("^nginx-access-ui\.log-([0-9]{8})(\.gz)?$")
-
 LogFile = namedtuple('LogFile', ['path', 'name', 'date', 'ext'])
 
-log_format = '[%(asctime)s] %(levelname).1s %(message)s'
+LOG_RE = re.compile("^nginx-access-ui[.]log-([0-9]{8})([.]gz)?$")
+
+LOG_FORMAT = '[%(asctime)s] %(levelname).1s %(message)s'
+
+REP_NAME_TMP = 'report-{:4d}.{:02d}.{:02d}.html'
 
 
 def update_config(config, config_path):
@@ -53,7 +55,7 @@ def get_last_log(log_dir):
     file_list = os.listdir(log_dir)
     if not file_list:
         return None
-    logs = list(filter(lambda s: LOG_RE.match(s), file_list))
+    logs = [f for f in file_list if LOG_RE.match(f)]
     logs.sort(reverse=True)
     if logs != []:
         log_name = logs[0]
@@ -66,8 +68,25 @@ def get_last_log(log_dir):
         return None
 
 
+def parse_line(line):
+    return '1'
+
+
+def read_log(log_file, parse_fn=parse_line):
+    open_fn = gzip.open if log_file.ext == '.gz' else open
+    total = processed = 0
+    with open_fn(log_file.path, 'rt') as log:
+        for line in log:
+            parsed_line = parse_fn(line)
+            total += 1
+            if parsed_line:
+                processed += 1
+                yield parsed_line
+    print("%s of %s lines processed" % (processed, total))
+
+
 def main():
-    logging.basicConfig(format=log_format, level=logging.INFO)
+    logging.basicConfig(format=LOG_FORMAT, level=logging.INFO)
 
     config_path = cli_config_path()
     if config_path:
@@ -84,24 +103,20 @@ def main():
     if not log_file:
         logging.info('Log files not found in log directory')
         sys.exit(0)
+    logging.info('Found last log file ' + log_file.name)
 
     report_dir = config.get('REPORT_DIR', '')
     if report_dir != '':
         if not os.path.isdir(report_dir):
             logging.error("Report directory doesn't exists")
             sys.exit(1)
-        log_date = log_file.date
-        report_file = 'report-{:4d}.{:02d}.{:02d}.html'.format(log_date.year, log_date.month, log_date.day)
+        ldate = log_file.date
+        report_file = REP_NAME_TMP.format(ldate.year, ldate.month, ldate.day)
         print(report_file)
         # if report_exists(report_dir)
 
     fname = None if report_dir == '' else report_dir
-    logging.basicConfig(format=log_format, level=logging.INFO, filename=fname)
-
-    open_fn = gzip.open if log_file.ext == '.gz' else open
-    with open_fn(log_file.path, 'rt') as log:
-        for line in log:
-            pass
+    logging.basicConfig(format=LOG_FORMAT, level=logging.INFO, filename=fname)
 
 
 if __name__ == "__main__":
