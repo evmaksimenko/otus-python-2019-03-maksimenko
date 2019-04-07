@@ -17,6 +17,7 @@ from datetime import datetime
 config = {
     "REPORT_SIZE": 1000,
     "REPORT_DIR": "./reports",
+    "REPORT_TEMPLATE": "report.html",
     "LOG_DIR": "./log",
     "LOGGER": ""
 }
@@ -75,7 +76,7 @@ def parse_line(line):
     return '1'
 
 
-def read_log(log_file, parse_fn=parse_line):
+def read_log(log_file, parse_fn=parse_line, threshold=40):
     open_fn = gzip.open if log_file.ext == '.gz' else open
     total = processed = 0
     with open_fn(log_file.path, 'rt') as log:
@@ -85,7 +86,9 @@ def read_log(log_file, parse_fn=parse_line):
             if parsed_line:
                 processed += 1
                 yield parsed_line
-    print("%s of %s lines processed" % (processed, total))
+    if processed * 100 / total > threshold:
+        logging.error('Too many unparsable lines')
+    logging.info("%s of %s lines processed" % (processed, total))
 
 
 def main():
@@ -108,6 +111,7 @@ def main():
     if not log_file:
         logging.info('Log files not found in log directory')
         sys.exit(0)
+
     logging.info('Found last log file ' + log_file.name)
 
     report_dir = config.get('REPORT_DIR', '')
@@ -121,6 +125,11 @@ def main():
         if os.path.exists(report_file):
             logging.info('Report already exists')
             sys.exit(0)
+
+    report_tmpl = config.get('REPORT_TEMPLATE', '')
+    if report_tmpl == '':
+        logging.error("Report template not found")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
